@@ -76,7 +76,20 @@ client = OpenAI()
 
 
 def guard(action):
-    if getattr(action, "name", None) == "delete_file":
+    # Determine the tool/action name for both Responses and Chat Completions shapes.
+    name = getattr(action, "name", None)
+
+    # Chat Completions function tools: action.type == "function", name at action.function.name
+    if name is None and getattr(action, "type", None) == "function":
+        func = getattr(action, "function", None)
+        name = getattr(func, "name", None)
+
+    # Chat Completions custom tools: action.type == "custom", name at action.custom.name
+    if name is None and getattr(action, "type", None) == "custom":
+        custom = getattr(action, "custom", None)
+        name = getattr(custom, "name", None)
+
+    if name == "delete_file":
         return GuardDecision.BLOCK
     return GuardDecision.ALLOW
 

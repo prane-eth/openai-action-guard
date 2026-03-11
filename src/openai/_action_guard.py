@@ -79,6 +79,12 @@ def _describe_action(action: Action) -> str:
         suffix = f" ({action_id})" if action_id else ""
         return f"Action blocked by `action_guard`: function tool `{name}`{suffix}"
 
+    if action_type == "custom":
+        name = action.custom.name
+        action_id = getattr(action, "id", None)
+        suffix = f" ({action_id})" if action_id else ""
+        return f"Action blocked by `action_guard`: custom tool `{name}`{suffix}"
+
     name = getattr(action, "name", None)
     server_label = getattr(action, "server_label", None)
     action_id = getattr(action, "call_id", None) or getattr(action, "id", None)
