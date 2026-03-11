@@ -1652,6 +1652,7 @@ class AsyncCompletions(AsyncAPIResource):
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
         web_search_options: completion_create_params.WebSearchOptions | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
