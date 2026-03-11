@@ -40,12 +40,14 @@ from .input_tokens import (
 )
 from ..._exceptions import OpenAIError
 from ..._base_client import _merge_mappings, make_request_options
+from ..._action_guard import apply_action_guard, ensure_action_guard_support
 from ...types.responses import (
     response_create_params,
     response_compact_params,
     response_retrieve_params,
     responses_client_event_param,
 )
+from ...types.action_guard import ActionGuard
 from ...lib._parsing._responses import (
     TextFormatT,
     parse_response,
@@ -142,6 +144,7 @@ class Responses(SyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -391,6 +394,7 @@ class Responses(SyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -640,6 +644,7 @@ class Responses(SyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -888,6 +893,7 @@ class Responses(SyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -895,6 +901,7 @@ class Responses(SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> Response | Stream[ResponseStreamEvent]:
+        ensure_action_guard_support(action_guard=action_guard, stream=bool(stream))
         return self._post(
             "/responses",
             body=maybe_transform(
@@ -929,12 +936,24 @@ class Responses(SyncAPIResource):
                     "truncation": truncation,
                     "user": user,
                 },
-                response_create_params.ResponseCreateParamsStreaming
-                if stream
-                else response_create_params.ResponseCreateParamsNonStreaming,
+                (
+                    response_create_params.ResponseCreateParamsStreaming
+                    if stream
+                    else response_create_params.ResponseCreateParamsNonStreaming
+                ),
             ),
             options=make_request_options(
-                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
+                post_parser=(
+                    not_given
+                    if action_guard is None
+                    else lambda response: apply_action_guard(
+                        response, action_guard=action_guard
+                    )
+                ),
             ),
             cast_to=Response,
             stream=stream or False,
@@ -963,7 +982,9 @@ class Responses(SyncAPIResource):
         input: Union[str, ResponseInputParam],
         model: ResponsesModel,
         background: Optional[bool] | Omit = omit,
-        context_management: Optional[Iterable[response_create_params.ContextManagement]] | Omit = omit,
+        context_management: (
+            Optional[Iterable[response_create_params.ContextManagement]] | Omit
+        ) = omit,
         text_format: type[TextFormatT] | Omit = omit,
         tools: Iterable[ParseableToolParam] | Omit = omit,
         conversation: Optional[response_create_params.Conversation] | Omit = omit,
@@ -979,7 +1000,9 @@ class Responses(SyncAPIResource):
         prompt_cache_retention: Optional[Literal["in-memory", "24h"]] | Omit = omit,
         reasoning: Optional[Reasoning] | Omit = omit,
         safety_identifier: str | Omit = omit,
-        service_tier: Optional[Literal["auto", "default", "flex", "scale", "priority"]] | Omit = omit,
+        service_tier: (
+            Optional[Literal["auto", "default", "flex", "scale", "priority"]] | Omit
+        ) = omit,
         store: Optional[bool] | Omit = omit,
         stream_options: Optional[response_create_params.StreamOptions] | Omit = omit,
         temperature: Optional[float] | Omit = omit,
@@ -1184,6 +1207,7 @@ class Responses(SyncAPIResource):
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -1191,6 +1215,7 @@ class Responses(SyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> ParsedResponse[TextFormatT]:
+        ensure_action_guard_support(action_guard=action_guard, stream=bool(stream))
         if is_given(text_format):
             if not text:
                 text = {}
@@ -1203,10 +1228,13 @@ class Responses(SyncAPIResource):
         tools = _make_tools(tools)
 
         def parser(raw_response: Response) -> ParsedResponse[TextFormatT]:
-            return parse_response(
-                input_tools=tools,
-                text_format=text_format,
-                response=raw_response,
+            return apply_action_guard(
+                parse_response(
+                    input_tools=tools,
+                    text_format=text_format,
+                    response=raw_response,
+                ),
+                action_guard=action_guard,
             )
 
         return self._post(
@@ -1805,6 +1833,7 @@ class AsyncResponses(AsyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -2054,6 +2083,7 @@ class AsyncResponses(AsyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -2303,6 +2333,7 @@ class AsyncResponses(AsyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -2551,6 +2582,7 @@ class AsyncResponses(AsyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -2558,6 +2590,7 @@ class AsyncResponses(AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> Response | AsyncStream[ResponseStreamEvent]:
+        ensure_action_guard_support(action_guard=action_guard, stream=bool(stream))
         return await self._post(
             "/responses",
             body=await async_maybe_transform(
@@ -2592,12 +2625,24 @@ class AsyncResponses(AsyncAPIResource):
                     "truncation": truncation,
                     "user": user,
                 },
-                response_create_params.ResponseCreateParamsStreaming
-                if stream
-                else response_create_params.ResponseCreateParamsNonStreaming,
+                (
+                    response_create_params.ResponseCreateParamsStreaming
+                    if stream
+                    else response_create_params.ResponseCreateParamsNonStreaming
+                ),
             ),
             options=make_request_options(
-                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
+                post_parser=(
+                    not_given
+                    if action_guard is None
+                    else lambda response: apply_action_guard(
+                        response, action_guard=action_guard
+                    )
+                ),
             ),
             cast_to=Response,
             stream=stream or False,
@@ -2626,7 +2671,9 @@ class AsyncResponses(AsyncAPIResource):
         input: Union[str, ResponseInputParam],
         model: ResponsesModel,
         background: Optional[bool] | Omit = omit,
-        context_management: Optional[Iterable[response_create_params.ContextManagement]] | Omit = omit,
+        context_management: (
+            Optional[Iterable[response_create_params.ContextManagement]] | Omit
+        ) = omit,
         text_format: type[TextFormatT] | Omit = omit,
         tools: Iterable[ParseableToolParam] | Omit = omit,
         conversation: Optional[response_create_params.Conversation] | Omit = omit,
@@ -2642,7 +2689,9 @@ class AsyncResponses(AsyncAPIResource):
         prompt_cache_retention: Optional[Literal["in-memory", "24h"]] | Omit = omit,
         reasoning: Optional[Reasoning] | Omit = omit,
         safety_identifier: str | Omit = omit,
-        service_tier: Optional[Literal["auto", "default", "flex", "scale", "priority"]] | Omit = omit,
+        service_tier: (
+            Optional[Literal["auto", "default", "flex", "scale", "priority"]] | Omit
+        ) = omit,
         store: Optional[bool] | Omit = omit,
         stream_options: Optional[response_create_params.StreamOptions] | Omit = omit,
         temperature: Optional[float] | Omit = omit,
@@ -2851,6 +2900,7 @@ class AsyncResponses(AsyncAPIResource):
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -2858,6 +2908,7 @@ class AsyncResponses(AsyncAPIResource):
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> ParsedResponse[TextFormatT]:
+        ensure_action_guard_support(action_guard=action_guard, stream=bool(stream))
         if is_given(text_format):
             if not text:
                 text = {}
@@ -2870,10 +2921,13 @@ class AsyncResponses(AsyncAPIResource):
         tools = _make_tools(tools)
 
         def parser(raw_response: Response) -> ParsedResponse[TextFormatT]:
-            return parse_response(
-                input_tools=tools,
-                text_format=text_format,
-                response=raw_response,
+            return apply_action_guard(
+                parse_response(
+                    input_tools=tools,
+                    text_format=text_format,
+                    response=raw_response,
+                ),
+                action_guard=action_guard,
             )
 
         return await self._post(

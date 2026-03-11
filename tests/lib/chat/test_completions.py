@@ -984,6 +984,80 @@ ParsedChatCompletion(
     )
 
 
+@pytest.mark.respx(base_url=base_url)
+def test_action_guard_blocks_tool_calls(client: OpenAI, respx_mock: MockRouter) -> None:
+    seen: list[openai.Action] = []
+
+    def action_guard(action: openai.Action) -> openai.GuardDecision:
+        seen.append(action)
+        return openai.GuardDecision.BLOCK
+
+    with pytest.raises(openai.ActionGuardError, match="get_weather"):
+        make_snapshot_request(
+            lambda c: c.chat.completions.create(
+                model="gpt-5.4-2026-03-05",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": "What's the weather like in San Francisco?",
+                    },
+                ],
+                action_guard=action_guard,
+            ),
+            content_snapshot=snapshot(
+                '{"id": "chatcmpl-ABfvzdvCI6RaIkiEFNjqGXCSYnlzf", "object": "chat.completion", "created": 1727346167, "model": "gpt-5.4-2026-03-05", "choices": [{"index": 0, "message": {"role": "assistant", "content": null, "tool_calls": [{"id": "call_CUdUoJpsWWVdxXntucvnol1M", "type": "function", "function": {"name": "get_weather", "arguments": "{\\"city\\":\\"San Francisco\\",\\"state\\":\\"CA\\"}"}}], "refusal": null}, "logprobs": null, "finish_reason": "tool_calls"}], "usage": {"prompt_tokens": 48, "completion_tokens": 19, "total_tokens": 67, "completion_tokens_details": {"reasoning_tokens": 0}}, "system_fingerprint": "fp_5050236cbd"}'
+            ),
+            path="/chat/completions",
+            mock_client=client,
+            respx_mock=respx_mock,
+        )
+
+    assert len(seen) == 1
+    assert seen[0].type == "function"
+
+
+@pytest.mark.respx(base_url=base_url)
+def test_action_guard_blocks_custom_tool_calls(client: OpenAI, respx_mock: MockRouter) -> None:
+    seen: list[openai.Action] = []
+
+    def action_guard(action: openai.Action) -> openai.GuardDecision:
+        seen.append(action)
+        return openai.GuardDecision.BLOCK
+
+    with pytest.raises(openai.ActionGuardError, match="delete_file"):
+        make_snapshot_request(
+            lambda c: c.chat.completions.create(
+                model="gpt-5.4-2026-03-05",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": "Please delete the file named report.txt",
+                    },
+                ],
+                action_guard=action_guard,
+            ),
+            content_snapshot=snapshot(
+                '{"id": "chatcmpl-customtoolcall01", "object": "chat.completion", "created": 1727346167, "model": "gpt-5.4-2026-03-05", "choices": [{"index": 0, "message": {"role": "assistant", "content": null, "tool_calls": [{"id": "call_custom01", "type": "custom", "custom": {"name": "delete_file", "input": "{\\"filename\\":\\"report.txt\\"}"}}], "refusal": null}, "logprobs": null, "finish_reason": "tool_calls"}], "usage": {"prompt_tokens": 48, "completion_tokens": 19, "total_tokens": 67, "completion_tokens_details": {"reasoning_tokens": 0}}, "system_fingerprint": "fp_5050236cbd"}'
+            ),
+            path="/chat/completions",
+            mock_client=client,
+            respx_mock=respx_mock,
+        )
+
+    assert len(seen) == 1
+    assert seen[0].type == "custom"
+
+
+def test_action_guard_rejects_streaming(client: OpenAI) -> None:
+    with pytest.raises(ValueError, match="non-streaming"):
+        client.chat.completions.create(
+            model="gpt-5.4-2026-03-05",
+            messages=[{"role": "user", "content": "hi"}],
+            stream=True,
+            action_guard=lambda _: openai.GuardDecision.ALLOW,
+        )
+
+
 @pytest.mark.parametrize("sync", [True, False], ids=["sync", "async"])
 def test_parse_method_in_sync(sync: bool, client: OpenAI, async_client: AsyncOpenAI) -> None:
     checking_client: OpenAI | AsyncOpenAI = client if sync else async_client

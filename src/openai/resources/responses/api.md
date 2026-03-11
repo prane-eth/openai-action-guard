@@ -160,6 +160,8 @@ Methods:
 - <code title="post /responses/{response_id}/cancel">client.responses.<a href="./src/openai/resources/responses/responses.py">cancel</a>(response_id) -> <a href="./src/openai/types/responses/response.py">Response</a></code>
 - <code title="post /responses/compact">client.responses.<a href="./src/openai/resources/responses/responses.py">compact</a>(\*\*<a href="src/openai/types/responses/response_compact_params.py">params</a>) -> <a href="./src/openai/types/responses/compacted_response.py">CompactedResponse</a></code>
 
+`client.responses.create()` and `client.responses.parse()` also accept a local `action_guard` callback for validating returned function, custom tool, and MCP actions. This callback is SDK-only and is not sent to the API.
+
 ## InputItems
 
 Types:

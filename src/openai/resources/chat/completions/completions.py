@@ -39,7 +39,9 @@ from ....lib._parsing import (
     parse_chat_completion as _parse_chat_completion,
     type_to_response_format_param as _type_to_response_format,
 )
+from ...._action_guard import apply_action_guard, ensure_action_guard_support
 from ....lib.streaming.chat import ChatCompletionStreamManager, AsyncChatCompletionStreamManager
+from ....types.action_guard import ActionGuard
 from ....types.shared.chat_model import ChatModel
 from ....types.chat.chat_completion import ChatCompletion
 from ....types.shared_params.metadata import Metadata
@@ -125,6 +127,7 @@ class Completions(SyncAPIResource):
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
         web_search_options: completion_create_params.WebSearchOptions | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -182,10 +185,13 @@ class Completions(SyncAPIResource):
         }
 
         def parser(raw_completion: ChatCompletion) -> ParsedChatCompletion[ResponseFormatT]:
-            return _parse_chat_completion(
-                response_format=response_format,
-                chat_completion=raw_completion,
-                input_tools=chat_completion_tools,
+            return apply_action_guard(
+                _parse_chat_completion(
+                    response_format=response_format,
+                    chat_completion=raw_completion,
+                    input_tools=chat_completion_tools,
+                ),
+                action_guard=action_guard,
             )
 
         return self._post(
@@ -282,6 +288,7 @@ class Completions(SyncAPIResource):
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
         web_search_options: completion_create_params.WebSearchOptions | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -588,6 +595,7 @@ class Completions(SyncAPIResource):
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
         web_search_options: completion_create_params.WebSearchOptions | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -894,6 +902,7 @@ class Completions(SyncAPIResource):
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
         web_search_options: completion_create_params.WebSearchOptions | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -1200,6 +1209,7 @@ class Completions(SyncAPIResource):
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
         web_search_options: completion_create_params.WebSearchOptions | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -1208,6 +1218,7 @@ class Completions(SyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> ChatCompletion | Stream[ChatCompletionChunk]:
         validate_response_format(response_format)
+        ensure_action_guard_support(action_guard=action_guard, stream=bool(stream))
         return self._post(
             "/chat/completions",
             body=maybe_transform(
@@ -1248,12 +1259,24 @@ class Completions(SyncAPIResource):
                     "verbosity": verbosity,
                     "web_search_options": web_search_options,
                 },
-                completion_create_params.CompletionCreateParamsStreaming
-                if stream
-                else completion_create_params.CompletionCreateParamsNonStreaming,
+                (
+                    completion_create_params.CompletionCreateParamsStreaming
+                    if stream
+                    else completion_create_params.CompletionCreateParamsNonStreaming
+                ),
             ),
             options=make_request_options(
-                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
+                post_parser=(
+                    not_given
+                    if action_guard is None
+                    else lambda completion: apply_action_guard(
+                        completion, action_guard=action_guard
+                    )
+                ),
             ),
             cast_to=ChatCompletion,
             stream=stream or False,
@@ -1477,6 +1500,7 @@ class Completions(SyncAPIResource):
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
         web_search_options: completion_create_params.WebSearchOptions | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -1516,6 +1540,7 @@ class Completions(SyncAPIResource):
             messages=messages,
             model=model,
             audio=audio,
+            action_guard=action_guard,
             stream=True,
             response_format=_type_to_response_format(response_format),
             frequency_penalty=frequency_penalty,
@@ -1628,6 +1653,7 @@ class AsyncCompletions(AsyncAPIResource):
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
         web_search_options: completion_create_params.WebSearchOptions | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -1685,10 +1711,13 @@ class AsyncCompletions(AsyncAPIResource):
         }
 
         def parser(raw_completion: ChatCompletion) -> ParsedChatCompletion[ResponseFormatT]:
-            return _parse_chat_completion(
-                response_format=response_format,
-                chat_completion=raw_completion,
-                input_tools=tools,
+            return apply_action_guard(
+                _parse_chat_completion(
+                    response_format=response_format,
+                    chat_completion=raw_completion,
+                    input_tools=tools,
+                ),
+                action_guard=action_guard,
             )
 
         return await self._post(
@@ -1785,6 +1814,7 @@ class AsyncCompletions(AsyncAPIResource):
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
         web_search_options: completion_create_params.WebSearchOptions | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -2091,6 +2121,7 @@ class AsyncCompletions(AsyncAPIResource):
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
         web_search_options: completion_create_params.WebSearchOptions | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -2397,6 +2428,7 @@ class AsyncCompletions(AsyncAPIResource):
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
         web_search_options: completion_create_params.WebSearchOptions | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -2703,6 +2735,7 @@ class AsyncCompletions(AsyncAPIResource):
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
         web_search_options: completion_create_params.WebSearchOptions | Omit = omit,
+        action_guard: ActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -2711,6 +2744,7 @@ class AsyncCompletions(AsyncAPIResource):
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
     ) -> ChatCompletion | AsyncStream[ChatCompletionChunk]:
         validate_response_format(response_format)
+        ensure_action_guard_support(action_guard=action_guard, stream=bool(stream))
         return await self._post(
             "/chat/completions",
             body=await async_maybe_transform(
@@ -2751,12 +2785,24 @@ class AsyncCompletions(AsyncAPIResource):
                     "verbosity": verbosity,
                     "web_search_options": web_search_options,
                 },
-                completion_create_params.CompletionCreateParamsStreaming
-                if stream
-                else completion_create_params.CompletionCreateParamsNonStreaming,
+                (
+                    completion_create_params.CompletionCreateParamsStreaming
+                    if stream
+                    else completion_create_params.CompletionCreateParamsNonStreaming
+                ),
             ),
             options=make_request_options(
-                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
+                post_parser=(
+                    not_given
+                    if action_guard is None
+                    else lambda completion: apply_action_guard(
+                        completion, action_guard=action_guard
+                    )
+                ),
             ),
             cast_to=ChatCompletion,
             stream=stream or False,

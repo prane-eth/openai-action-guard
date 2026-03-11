@@ -1075,8 +1075,18 @@ def test_stream_method_in_sync(sync: bool, client: OpenAI, async_client: AsyncOp
     assert_signatures_in_sync(
         checking_client.chat.completions.create,
         checking_client.chat.completions.stream,
-        exclude_params={"response_format", "stream"},
+        exclude_params={"action_guard", "response_format", "stream"},
     )
+
+
+def test_stream_method_rejects_action_guard(client: OpenAI) -> None:
+    with pytest.raises(ValueError, match="non-streaming"):
+        with client.chat.completions.stream(
+            model="gpt-5.4-2026-03-05",
+            messages=[{"role": "user", "content": "hi"}],
+            action_guard=lambda _: openai.GuardDecision.ALLOW,
+        ):
+            pass
 
 
 class StreamListener(Generic[ResponseFormatT]):

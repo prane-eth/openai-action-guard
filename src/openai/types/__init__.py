@@ -39,6 +39,11 @@ from .batch_usage import BatchUsage as BatchUsage
 from .file_object import FileObject as FileObject
 from .image_model import ImageModel as ImageModel
 from .video_model import VideoModel as VideoModel
+from .action_guard import (
+    Action as Action,
+    ActionGuard as ActionGuard,
+    GuardDecision as GuardDecision,
+)
 from .file_content import FileContent as FileContent
 from .file_deleted import FileDeleted as FileDeleted
 from .file_purpose import FilePurpose as FilePurpose

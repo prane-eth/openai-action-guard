@@ -7,6 +7,7 @@ from typing import Any, cast
 
 import pytest
 
+import openai
 from openai import OpenAI, AsyncOpenAI
 from tests.utils import assert_matches_type
 from openai._utils import assert_signatures_in_sync
@@ -83,6 +84,7 @@ class TestResponses:
             top_p=1,
             truncation="auto",
             user="user-1234",
+            action_guard=lambda _: openai.GuardDecision.ALLOW,
         )
         assert_matches_type(Response, response, path=["response"])
 
@@ -423,7 +425,7 @@ def test_parse_method_in_sync(sync: bool, client: OpenAI, async_client: AsyncOpe
     assert_signatures_in_sync(
         checking_client.responses.create,
         checking_client.responses.parse,
-        exclude_params={"stream", "tools"},
+        exclude_params={"action_guard", "stream", "tools"},
     )
 
 
@@ -494,6 +496,7 @@ class TestAsyncResponses:
             top_p=1,
             truncation="auto",
             user="user-1234",
+            action_guard=lambda _: openai.GuardDecision.ALLOW,
         )
         assert_matches_type(Response, response, path=["response"])
 
