@@ -30,12 +30,18 @@ from ._exceptions import (
     LengthFinishReasonError,
     UnprocessableEntityError,
     APIResponseValidationError,
+    ActionGuardError,
     InvalidWebhookSignatureError,
     ContentFilterFinishReasonError,
 )
 from ._base_client import DefaultHttpxClient, DefaultAioHttpClient, DefaultAsyncHttpxClient
 from ._utils._logs import setup_logging as _setup_logging
 from ._legacy_response import HttpxBinaryResponseContent as HttpxBinaryResponseContent
+from .types.action_guard import (
+    Action as Action,
+    ActionGuard as ActionGuard,
+    GuardDecision as GuardDecision,
+)
 
 __all__ = [
     "types",
@@ -55,6 +61,7 @@ __all__ = [
     "APITimeoutError",
     "APIConnectionError",
     "APIResponseValidationError",
+    "ActionGuardError",
     "BadRequestError",
     "AuthenticationError",
     "PermissionDeniedError",
@@ -74,6 +81,9 @@ __all__ = [
     "AsyncStream",
     "OpenAI",
     "AsyncOpenAI",
+    "Action",
+    "ActionGuard",
+    "GuardDecision",
     "file_from_path",
     "BaseModel",
     "DEFAULT_TIMEOUT",

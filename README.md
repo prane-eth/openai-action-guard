@@ -65,6 +65,35 @@ completion = client.chat.completions.create(
 print(completion.choices[0].message.content)
 ```
 
+### Action guards
+
+You can attach a local `action_guard` to non-streaming `responses.create()`, `responses.parse()`, `chat.completions.create()`, and `chat.completions.parse()` calls. The guard runs in Python after the API response is parsed and before tool or MCP actions are handed back to your code.
+
+```python
+from openai import OpenAI, GuardDecision, ActionGuardError
+
+client = OpenAI()
+
+
+def guard(action):
+    if getattr(action, "name", None) == "delete_file":
+        return GuardDecision.BLOCK
+    return GuardDecision.ALLOW
+
+
+try:
+    response = client.responses.create(
+        model="gpt-5.4",
+        input="Clean up the temp directory.",
+        tools=[...],
+        action_guard=guard,
+    )
+except ActionGuardError as exc:
+    print(exc)
+```
+
+Blocked actions raise `ActionGuardError`. They are also logged through the SDK's standard logger. `action_guard` is an SDK-only argument and is not sent to the OpenAI API. Streaming helpers do not support it.
+
 While you can provide an `api_key` keyword argument,
 we recommend using [python-dotenv](https://pypi.org/project/python-dotenv/)
 to add `OPENAI_API_KEY="My API Key"` to your `.env` file
@@ -643,6 +672,7 @@ $ export OPENAI_LOG=info
 ```
 
 Or to `debug` for more verbose logging.
+Blocked `action_guard` decisions are logged as warnings through the same logger.
 
 ### How to tell whether `None` means `null` or missing
 

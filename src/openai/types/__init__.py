@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from .action_guard import (
+    Action as Action,
+    ActionGuard as ActionGuard,
+    GuardDecision as GuardDecision,
+)
 from .batch import Batch as Batch
 from .image import Image as Image
 from .model import Model as Model

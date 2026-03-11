@@ -22,6 +22,7 @@ __all__ = [
     "UnprocessableEntityError",
     "RateLimitError",
     "InternalServerError",
+    "ActionGuardError",
     "LengthFinishReasonError",
     "ContentFilterFinishReasonError",
     "InvalidWebhookSignatureError",
@@ -131,6 +132,14 @@ class RateLimitError(APIStatusError):
 
 class InternalServerError(APIStatusError):
     pass
+
+
+class ActionGuardError(OpenAIError):
+    action: object
+
+    def __init__(self, message: str, *, action: object) -> None:
+        super().__init__(message)
+        self.action = action
 
 
 class LengthFinishReasonError(OpenAIError):

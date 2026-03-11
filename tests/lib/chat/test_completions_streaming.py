@@ -1075,7 +1075,7 @@ def test_stream_method_in_sync(sync: bool, client: OpenAI, async_client: AsyncOp
     assert_signatures_in_sync(
         checking_client.chat.completions.create,
         checking_client.chat.completions.stream,
-        exclude_params={"response_format", "stream"},
+        exclude_params={"action_guard", "response_format", "stream"},
     )
 
 

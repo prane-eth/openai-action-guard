@@ -2,6 +2,8 @@
 
 ```python
 from openai.types import (
+    Action,
+    ActionGuard,
     AllModels,
     ChatModel,
     ComparisonFilter,
@@ -19,8 +21,11 @@ from openai.types import (
     ResponseFormatTextGrammar,
     ResponseFormatTextPython,
     ResponsesModel,
+    GuardDecision,
 )
 ```
+
+Client-side action guards are available on `client.chat.completions.create()`, `client.chat.completions.parse()`, `client.responses.create()`, and `client.responses.parse()`. They are SDK-only arguments, blocked actions raise `openai.ActionGuardError`, and streaming methods do not support them.
 
 # Completions
 
@@ -95,6 +100,8 @@ Methods:
 - <code title="post /chat/completions/{completion_id}">client.chat.completions.<a href="./src/openai/resources/chat/completions/completions.py">update</a>(completion_id, \*\*<a href="src/openai/types/chat/completion_update_params.py">params</a>) -> <a href="./src/openai/types/chat/chat_completion.py">ChatCompletion</a></code>
 - <code title="get /chat/completions">client.chat.completions.<a href="./src/openai/resources/chat/completions/completions.py">list</a>(\*\*<a href="src/openai/types/chat/completion_list_params.py">params</a>) -> <a href="./src/openai/types/chat/chat_completion.py">SyncCursorPage[ChatCompletion]</a></code>
 - <code title="delete /chat/completions/{completion_id}">client.chat.completions.<a href="./src/openai/resources/chat/completions/completions.py">delete</a>(completion_id) -> <a href="./src/openai/types/chat/chat_completion_deleted.py">ChatCompletionDeleted</a></code>
+
+`client.chat.completions.create()` and `client.chat.completions.parse()` also accept a local `action_guard` callback for validating returned tool calls before your application consumes them.
 
 ### Messages
 
