@@ -632,6 +632,48 @@ Note that requests that time out are [retried twice by default](#retries).
 
 ## Advanced
 
+### Action guards
+
+You can attach a local `action_guard` to non-streaming `responses.create()`, `responses.parse()`, `chat.completions.create()`, and `chat.completions.parse()` calls. The guard runs in Python after the API response is parsed and before tool or MCP actions are handed back to your code.
+
+```python
+from openai import OpenAI, GuardDecision, ActionGuardError
+
+client = OpenAI()
+
+
+def guard(action):
+    # Determine the tool/action name for both Responses and Chat Completions shapes.
+    name = getattr(action, "name", None)
+
+    # Chat Completions function tools: action.type == "function", name at action.function.name
+    if name is None and getattr(action, "type", None) == "function":
+        func = getattr(action, "function", None)
+        name = getattr(func, "name", None)
+
+    # Chat Completions custom tools: action.type == "custom", name at action.custom.name
+    if name is None and getattr(action, "type", None) == "custom":
+        custom = getattr(action, "custom", None)
+        name = getattr(custom, "name", None)
+
+    if name == "delete_file":
+        return GuardDecision.BLOCK
+    return GuardDecision.ALLOW
+
+
+try:
+    response = client.responses.create(
+        model="gpt-5.4",
+        input="Clean up the temp directory.",
+        tools=[...],
+        action_guard=guard,
+    )
+except ActionGuardError as exc:
+    print(exc)
+```
+
+Blocked actions raise `ActionGuardError`. They are also logged through the SDK's standard logger. `action_guard` is an SDK-only argument and is not sent to the OpenAI API. Streaming helpers do not support it.
+
 ### Logging
 
 We use the standard library [`logging`](https://docs.python.org/3/library/logging.html) module.

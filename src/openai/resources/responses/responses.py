@@ -40,12 +40,14 @@ from .input_tokens import (
 )
 from ..._exceptions import OpenAIError
 from ..._base_client import _merge_mappings, make_request_options
+from ..._agent_action_guard import apply_action_guard, with_action_guard
 from ...types.responses import (
     response_create_params,
     response_compact_params,
     response_retrieve_params,
     responses_client_event_param,
 )
+from ...types.agent_action_guard import AgentActionGuard
 from ...lib._parsing._responses import (
     TextFormatT,
     parse_response,
@@ -142,6 +144,7 @@ class Responses(SyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: AgentActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -391,6 +394,7 @@ class Responses(SyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: AgentActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -640,6 +644,7 @@ class Responses(SyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: AgentActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -888,6 +893,7 @@ class Responses(SyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: AgentActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -934,7 +940,17 @@ class Responses(SyncAPIResource):
                 else response_create_params.ResponseCreateParamsNonStreaming,
             ),
             options=make_request_options(
-                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
+                post_parser=(
+                    not_given
+                    if action_guard is None or stream is True
+                    else lambda response: with_action_guard(
+                        response, action_guard=action_guard
+                    )
+                ),
             ),
             cast_to=Response,
             stream=stream or False,
@@ -989,6 +1005,7 @@ class Responses(SyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: AgentActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -1030,6 +1047,7 @@ class Responses(SyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: AgentActionGuard | None = None,
         starting_after: int | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -1123,6 +1141,7 @@ class Responses(SyncAPIResource):
                 truncation=truncation,
                 user=user,
                 background=background,
+                action_guard=action_guard,
                 extra_headers=extra_headers,
                 extra_query=extra_query,
                 extra_body=extra_body,
@@ -1184,6 +1203,7 @@ class Responses(SyncAPIResource):
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
+        action_guard: AgentActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -1203,10 +1223,13 @@ class Responses(SyncAPIResource):
         tools = _make_tools(tools)
 
         def parser(raw_response: Response) -> ParsedResponse[TextFormatT]:
-            return parse_response(
-                input_tools=tools,
-                text_format=text_format,
-                response=raw_response,
+            return apply_action_guard(
+                parse_response(
+                    input_tools=tools,
+                    text_format=text_format,
+                    response=raw_response,
+                ),
+                action_guard=action_guard,
             )
 
         return self._post(
@@ -1805,6 +1828,7 @@ class AsyncResponses(AsyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: AgentActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -2054,6 +2078,7 @@ class AsyncResponses(AsyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: AgentActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -2303,6 +2328,7 @@ class AsyncResponses(AsyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: AgentActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -2551,6 +2577,7 @@ class AsyncResponses(AsyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: AgentActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -2597,7 +2624,17 @@ class AsyncResponses(AsyncAPIResource):
                 else response_create_params.ResponseCreateParamsNonStreaming,
             ),
             options=make_request_options(
-                extra_headers=extra_headers, extra_query=extra_query, extra_body=extra_body, timeout=timeout
+                extra_headers=extra_headers,
+                extra_query=extra_query,
+                extra_body=extra_body,
+                timeout=timeout,
+                post_parser=(
+                    not_given
+                    if action_guard is None or stream is True
+                    else lambda response: with_action_guard(
+                        response, action_guard=action_guard
+                    )
+                ),
             ),
             cast_to=Response,
             stream=stream or False,
@@ -2652,6 +2689,7 @@ class AsyncResponses(AsyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: AgentActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -2693,6 +2731,7 @@ class AsyncResponses(AsyncAPIResource):
         top_p: Optional[float] | Omit = omit,
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
+        action_guard: AgentActionGuard | None = None,
         starting_after: int | Omit = omit,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
@@ -2785,6 +2824,7 @@ class AsyncResponses(AsyncAPIResource):
                 truncation=truncation,
                 user=user,
                 background=background,
+                action_guard=action_guard,
                 extra_headers=extra_headers,
                 extra_query=extra_query,
                 extra_body=extra_body,
@@ -2815,6 +2855,7 @@ class AsyncResponses(AsyncAPIResource):
                 text_format=text_format,
                 input_tools=tools,
                 starting_after=starting_after if is_given(starting_after) else None,
+                action_guard=action_guard,
             )
 
     async def parse(
@@ -2851,6 +2892,7 @@ class AsyncResponses(AsyncAPIResource):
         truncation: Optional[Literal["auto", "disabled"]] | Omit = omit,
         user: str | Omit = omit,
         verbosity: Optional[Literal["low", "medium", "high"]] | Omit = omit,
+        action_guard: AgentActionGuard | None = None,
         # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
         # The extra values given here take precedence over values defined on the client or passed to this method.
         extra_headers: Headers | None = None,
@@ -2870,10 +2912,13 @@ class AsyncResponses(AsyncAPIResource):
         tools = _make_tools(tools)
 
         def parser(raw_response: Response) -> ParsedResponse[TextFormatT]:
-            return parse_response(
-                input_tools=tools,
-                text_format=text_format,
-                response=raw_response,
+            return apply_action_guard(
+                parse_response(
+                    input_tools=tools,
+                    text_format=text_format,
+                    response=raw_response,
+                ),
+                action_guard=action_guard,
             )
 
         return await self._post(

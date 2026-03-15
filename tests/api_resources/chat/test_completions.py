@@ -8,6 +8,7 @@ from typing import Any, cast
 import pytest
 import pydantic
 
+import openai
 from openai import OpenAI, AsyncOpenAI
 from tests.utils import assert_matches_type
 from openai.pagination import SyncCursorPage, AsyncCursorPage
@@ -115,6 +116,7 @@ class TestCompletions:
                     "type": "approximate",
                 },
             },
+            action_guard=lambda _: openai.ActionGuardDecision.ALLOW,
         )
         assert_matches_type(ChatCompletion, completion, path=["response"])
 
@@ -558,6 +560,7 @@ class TestAsyncCompletions:
                     "type": "approximate",
                 },
             },
+            action_guard=lambda _: openai.ActionGuardDecision.ALLOW,
         )
         assert_matches_type(ChatCompletion, completion, path=["response"])
 
@@ -608,6 +611,7 @@ class TestAsyncCompletions:
             ],
             model="gpt-5.4",
             stream=True,
+            action_guard=lambda _: openai.ActionGuardDecision.ALLOW,
         )
         await completion_stream.response.aclose()
 

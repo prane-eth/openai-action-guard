@@ -1079,6 +1079,32 @@ def test_stream_method_in_sync(sync: bool, client: OpenAI, async_client: AsyncOp
     )
 
 
+@pytest.mark.respx(base_url=base_url)
+def test_stream_method_blocks_action_guard(client: OpenAI, respx_mock: MockRouter) -> None:
+    seen: list[openai.AgentAction] = []
+
+    def action_guard(action: openai.AgentAction) -> openai.ActionGuardDecision:
+        seen.append(action)
+        return openai.ActionGuardDecision.BLOCK
+
+    with pytest.raises(openai.ActionGuardError, match="get_weather"):
+        _make_stream_snapshot_request(
+            lambda c: c.chat.completions.stream(
+                model="gpt-5.4-2026-03-05",
+                messages=[{"role": "user", "content": "hi"}],
+                action_guard=action_guard,
+            ),
+            content_snapshot=snapshot(
+                'data: {"id":"chatcmpl-stream-1","object":"chat.completion.chunk","created":1727346167,"model":"gpt-5.4-2026-03-05","choices":[{"index":0,"delta":{"role":"assistant","tool_calls":[{"index":0,"id":"call_123","type":"function","function":{"name":"get_weather","arguments":"{}"}}]},"finish_reason":null}]}\n\ndata: [DONE]\n\n'
+            ),
+            mock_client=client,
+            respx_mock=respx_mock,
+        )
+
+    assert len(seen) == 1
+    assert seen[0].type == "function"
+
+
 class StreamListener(Generic[ResponseFormatT]):
     def __init__(self, stream: ChatCompletionStream[ResponseFormatT]) -> None:
         self.stream = stream

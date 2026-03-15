@@ -22,6 +22,7 @@ __all__ = [
     "UnprocessableEntityError",
     "RateLimitError",
     "InternalServerError",
+    "ActionGuardError",
     "LengthFinishReasonError",
     "ContentFilterFinishReasonError",
     "InvalidWebhookSignatureError",
@@ -159,3 +160,11 @@ class ContentFilterFinishReasonError(OpenAIError):
 
 class InvalidWebhookSignatureError(ValueError):
     """Raised when a webhook signature is invalid, meaning the computed signature does not match the expected signature."""
+
+
+class ActionGuardError(OpenAIError):
+    action: object
+
+    def __init__(self, message: str, *, action: object) -> None:
+        super().__init__(message)
+        self.action = action

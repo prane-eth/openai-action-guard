@@ -5,6 +5,8 @@ from types import TracebackType
 from typing import Any, List, Generic, Iterable, Awaitable, cast
 from typing_extensions import Self, Callable, Iterator, AsyncIterator
 
+from ....types.agent_action_guard import AgentActionGuard
+
 from ._types import ParsedResponseSnapshot
 from ._events import (
     ResponseStreamEvent,
@@ -201,6 +203,7 @@ class AsyncResponseStreamManager(Generic[TextFormatT]):
         *,
         text_format: type[TextFormatT] | Omit,
         input_tools: Iterable[ToolParam] | Omit,
+        action_guard: AgentActionGuard | None = None,
         starting_after: int | None,
     ) -> None:
         self.__stream: AsyncResponseStream[TextFormatT] | None = None
